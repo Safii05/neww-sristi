@@ -8,7 +8,9 @@ import {
   Trophy,
   ChevronLeft,
   LogOut,
-  Camera
+  Camera,
+  Volume2,
+  Mic
 } from 'lucide-react';
 import { 
   Chart as ChartJS, 
@@ -362,13 +364,57 @@ const ModulesSection = ({ data }: any) => {
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
 
-  const handleAnswer = (correct: boolean) => {
-    if (correct) setScore(s => s + 1);
-    if (step < data.length - 1) {
-      setStep(s => s + 1);
-    } else {
-      setFinished(true);
+  const speak = (text: string) => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const readCurrentQuestion = (currentQ: any) => {
+    if (!currentQ) return;
+    let text = `Question: ${currentQ.q}. `;
+    currentQ.options.forEach((opt: string, idx: number) => {
+      text += `Option ${idx + 1}: ${opt}. `;
+    });
+    speak(text);
+  };
+
+  useEffect(() => {
+    if (!finished && data[step]) {
+      readCurrentQuestion(data[step]);
     }
+  }, [step, finished]);
+
+  useEffect(() => {
+    const handleVoiceAnswer = (e: any) => {
+      const target = e.detail;
+      if (target.startsWith('option-')) {
+        const optionIndex = parseInt(target.split('-')[1]) - 1;
+        const q = data[step];
+        if (q && q.options[optionIndex]) {
+          handleAnswer(optionIndex === q.correct);
+        }
+      }
+    };
+    window.addEventListener('voice-navigate', handleVoiceAnswer);
+    return () => window.removeEventListener('voice-navigate', handleVoiceAnswer);
+  }, [step, data]);
+
+  const handleAnswer = (correct: boolean) => {
+    if (correct) {
+      setScore(s => s + 1);
+      speak("Correct answer.");
+    } else {
+      speak("Incorrect answer.");
+    }
+
+    setTimeout(() => {
+      if (step < data.length - 1) {
+        setStep(s => s + 1);
+      } else {
+        setFinished(true);
+      }
+    }, 1500);
   };
 
   const reset = () => {
@@ -393,7 +439,16 @@ const ModulesSection = ({ data }: any) => {
   return (
     <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
-        <h3 className="text-xl font-bold">{t.quizTitle}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <h3 className="text-xl font-bold">{t.quizTitle}</h3>
+          <button 
+            onClick={() => readCurrentQuestion(q)}
+            className="btn btn-secondary" 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+          >
+            <Volume2 size={16} /> Read Question
+          </button>
+        </div>
         <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.25rem 0.75rem', background: '#f1f5f9', borderRadius: '1rem' }}>
           {step + 1} / {data.length}
         </span>
@@ -407,9 +462,18 @@ const ModulesSection = ({ data }: any) => {
             className="btn"
             style={{ textAlign: 'left', border: '2px solid #f1f5f9', background: 'white' }}
           >
+            <span style={{ fontWeight: 800, color: 'var(--primary)', marginRight: '1rem' }}>{idx + 1}.</span>
             {opt}
           </button>
         ))}
+      </div>
+      <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dcfce7', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Mic size={20} />
+        </div>
+        <p className="text-xs text-slate-500">
+          Accessibility Mode Active: You can answer by saying <strong>"Option 1"</strong>, <strong>"Option 2"</strong>, etc.
+        </p>
       </div>
     </div>
   );

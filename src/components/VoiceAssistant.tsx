@@ -87,7 +87,19 @@ const VoiceAssistant = () => {
       'setting': 'settings',
       'ai detection': 'aiDetection',
       'detection': 'aiDetection',
-      'home': 'dashboard'
+      'home': 'dashboard',
+      'option 1': 'option-1',
+      'option 2': 'option-2',
+      'option 3': 'option-3',
+      'option 4': 'option-4',
+      'select option 1': 'option-1',
+      'select option 2': 'option-2',
+      'select option 3': 'option-3',
+      'select option 4': 'option-4',
+      'answer 1': 'option-1',
+      'answer 2': 'option-2',
+      'answer 3': 'option-3',
+      'answer 4': 'option-4',
     };
 
     let targetPage = '';
@@ -100,7 +112,11 @@ const VoiceAssistant = () => {
 
     if (targetPage) {
       setStatus('success');
-      speak(`Opening ${cmd}`);
+      if (targetPage.startsWith('option-')) {
+        speak(`Selecting ${cmd}`);
+      } else {
+        speak(`Opening ${cmd}`);
+      }
       window.dispatchEvent(new CustomEvent('voice-navigate', { detail: targetPage }));
       setTimeout(() => setTranscript(''), 3000);
     } else {
