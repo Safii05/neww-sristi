@@ -243,6 +243,12 @@ const AttendanceSection = ({ data, rate }: any) => {
         const cleanToken = decodedText.trim();
         console.log("QR Code Decoded:", cleanToken);
         
+        const speak = (text: string) => {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          window.speechSynthesis.speak(utterance);
+        };
+
         try {
           // Stop scanning immediately to prevent duplicate calls
           await scanner.clear();
@@ -252,6 +258,7 @@ const AttendanceSection = ({ data, rate }: any) => {
           const res = await scanAttendance({ userId: 2, token: cleanToken });
           if (res.data.success) {
             setScanStatus('success');
+            speak("Attendance marked successfully. Redirecting to dashboard.");
             setTimeout(() => window.location.reload(), 1500);
           } else {
             throw new Error(res.data.error || "Failed to mark attendance");
@@ -262,6 +269,7 @@ const AttendanceSection = ({ data, rate }: any) => {
           setIsScanning(false);
           const msg = err.response?.data?.error || err.message || "Scanning failed";
           setErrorMsg(msg);
+          speak(`Scanning failed: ${msg}`);
           // Try to clear if it wasn't cleared yet
           try { scanner.clear(); } catch(e) {}
         }
