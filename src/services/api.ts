@@ -13,7 +13,7 @@ export const logout = () => api.post('/logout');
 export const getAttendance = (userId: number) => api.get(`/attendance?userId=${userId}`);
 export const getModules = () => api.get('/modules');
 export const submitQuiz = (data: any) => api.post('/modules/submit', data);
-export const detectCrop = (formData: FormData) => api.post('/ai-detection', formData, {
+export const detectCrop = (formData: FormData) => api.post('/detect-crop', formData, {
   headers: { 'Content-Type': 'multipart/form-data' }
 });
 export const getSettings = (userId: number) => api.get(`/settings?userId=${userId}`);

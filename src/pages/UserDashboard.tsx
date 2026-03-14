@@ -112,58 +112,83 @@ const UserDashboard = ({ onLogout }: Props) => {
 const AIDetectionSection = () => {
   const { t } = useTranslation();
   const [preview, setPreview] = useState<string | null>(null);
-
   const [loading, setLoading] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const processFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+       alert("Please upload an image file.");
+       return;
+    }
+    
+    const reader = new FileReader();
+    reader.onloadend = () => setPreview(reader.result as string);
+    reader.readAsDataURL(file);
+
+    setLoading(true);
+    setAiResult(null);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const speak = (text: string) => {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      window.speechSynthesis.speak(utterance);
+    };
+
+    try {
+      const res = await detectCrop(formData);
+      const result = res.data;
+      setAiResult(result);
+      
+      const narration = `Analysis complete. Crop: ${result.crop}. Status: ${result.health}. ${result.disease === 'None' ? 'No disease detected.' : `Disease identified: ${result.disease}.`} Confidence: ${result.confidence}. Recommendation: ${result.suggestion}`;
+      speak(narration);
+    } catch (err) {
+      console.error("AI analysis failed", err);
+      speak("AI analysis failed. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreview(reader.result as string);
-      reader.readAsDataURL(file);
+    if (file) processFile(file);
+  };
 
-      // Upload to backend
-      setLoading(true);
-      const formData = new FormData();
-      formData.append('image', file);
-      try {
-        const res = await detectCrop(formData);
-        const result = res.data;
-        setAiResult(result);
-        
-        // Voice Narration of Results
-        const speak = (text: string) => {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(text);
-          window.speechSynthesis.speak(utterance);
-        };
-        
-        speak(`Analysis complete. Detected ${result.cropType || 'plant'}. Health status is ${result.healthStatus || 'unknown'}. Recommendation: ${result.suggestedAction || 'continue regular monitoring'}.`);
-      } catch (err) {
-        console.error("AI analysis failed", err);
-        // Fallback simulated result for demo
-        const fallback = { cropType: 'Tomato', healthStatus: 'Healthy', suggestedAction: 'Ensure consistent watering and check for early signs of blight.' };
-        setAiResult(fallback);
-        const speak = (text: string) => {
-          window.speechSynthesis.cancel();
-          const utterance = new SpeechSynthesisUtterance(text);
-          window.speechSynthesis.speak(utterance);
-        };
-        speak("Analysis failed to connect to server. Showing simulated results for a healthy Tomato plant.");
-      } finally {
-        setLoading(false);
-      }
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
+    else if (e.type === "dragleave") setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
     }
   };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
       <div className="card">
-        <h3 className="text-xl font-bold mb-6">{t.aiDetection}</h3>
+        <h3 className="text-xl font-bold mb-6">Crop Health Analysis</h3>
         <div 
-          className="upload-zone"
+          className={`upload-zone ${isDragging ? 'dragging' : ''}`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
           onClick={() => document.getElementById('user-file-input')?.click()}
+          style={{ 
+            border: isDragging ? '2px dashed var(--primary)' : '2px dashed #e2e8f0',
+            background: isDragging ? '#f0fdf4' : 'white',
+            transition: 'all 0.3s ease'
+          }}
         >
           <input 
             type="file" 
@@ -173,8 +198,8 @@ const AIDetectionSection = () => {
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
-          <UploadCloud className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-          <p className="text-slate-500 font-medium">{t.uploadBox}</p>
+          <UploadCloud className={`w-16 h-16 mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-slate-300'}`} />
+          <p className="text-slate-500 font-medium">{isDragging ? "Drop your image here" : t.uploadBox}</p>
         </div>
         {preview && (
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
@@ -184,35 +209,58 @@ const AIDetectionSection = () => {
         )}
       </div>
 
-      {preview ? (
-        <div className="card">
-          <h3 className="text-xl font-bold mb-6">{t.results}</h3>
-          {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center' }}>
-               <div className="fade-in">Analyzing with Gemini AI...</div>
+      <div className="card">
+        <h3 className="text-xl font-bold mb-6">{t.results}</h3>
+        {loading ? (
+          <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
+             <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+             <div className="font-bold text-slate-700">Analyzing with Gemini AI...</div>
+             <p className="text-sm text-slate-500 mt-2">Identifying crop diseases and treatment plans</p>
+          </div>
+        ) : aiResult ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span className="text-sm font-bold text-slate-500 uppercase">Crop Detected</span>
+                <span className="font-black text-slate-900">{aiResult.crop}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span className="text-sm font-bold text-slate-500 uppercase">Health Status</span>
+                <span className={`font-bold ${aiResult.health.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
+                  {aiResult.health}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span className="text-sm font-bold text-slate-500 uppercase">Disease</span>
+                <span className={`font-bold ${aiResult.disease === 'None' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {aiResult.disease}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="text-sm font-bold text-slate-500 uppercase">Confidence</span>
+                <span className="font-bold text-primary">{aiResult.confidence}</span>
+              </div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f8fafc', borderRadius: '1rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{t.cropType}</span>
-                <span style={{ fontWeight: 800 }}>{aiResult?.cropType || 'Cabbage'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f8fafc', borderRadius: '1rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{t.cropHealth}</span>
-                <span className="text-primary font-bold">{aiResult?.healthStatus || t.healthGood}</span>
-              </div>
-              <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '1.5rem', border: '1px solid #d1fae5' }}>
-                <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.5rem', color: '#065f46' }}>{t.suggestedAction}</p>
-                <p style={{ fontWeight: 600, color: '#065f46' }}>{aiResult?.suggestedAction || t.actionNone}</p>
-              </div>
+
+            <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '1.5rem', border: '1px solid #d1fae5' }}>
+              <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.75rem', color: '#065f46' }}>
+                {t.suggestedAction}
+              </p>
+              <p style={{ fontWeight: 600, color: '#065f46', lineHeight: '1.5' }}>
+                {aiResult.suggestion}
+              </p>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', background: '#f8fafc', color: 'var(--text-muted)', textAlign: 'center' }}>
-          <p className="italic">{t.placeholderResults}</p>
-        </div>
-      )}
+            
+            <button className="btn btn-secondary" onClick={() => { setPreview(null); setAiResult(null); }}>
+              Analyze New Image
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', borderStyle: 'dashed', border: '2px dashed #f1f5f9', background: '#f8fafc', color: 'var(--text-muted)', textAlign: 'center', borderRadius: '1rem' }}>
+            <p className="italic px-6">{t.placeholderResults}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
