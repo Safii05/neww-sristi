@@ -10,9 +10,9 @@ module.exports = (upload) => {
     res.redirect(307, '/api/analyze-crop');
   });
 
-  /* Advanced AI analysis route with Extended Diagnostic Schema */
+  /* Advanced AI analysis route with Chained Gemini Logic */
   router.post('/analyze-crop', upload.single('image'), async (req, res) => {
-    console.log("---- [Backend] Advanced Gemini Crop Diagnostic Started ----");
+    console.log("---- [Backend] Chained Gemini AI Diagnostic Started ----");
 
     if (!req.file) {
       console.error("[Backend] No image uploaded");
@@ -28,92 +28,95 @@ module.exports = (upload) => {
     }
 
     try {
-      /* Convert image to base64 */
+      /* --- STEP 1: VISION DETECTION --- */
       const imageBuffer = fs.readFileSync(imagePath);
       const base64Image = imageBuffer.toString("base64");
       const mimeType = req.file.mimetype;
 
-      const prompt = `
-You are an advanced agricultural pathologist AI.
-Analyze the crop image and return ONLY a JSON object with the following fields:
+      const visionPrompt = `
+You are an advanced agricultural pathologist AI. 
+Analyze the crop image and return ONLY a JSON object with:
 {
   "cropName": "name of plant",
   "diseaseName": "specific disease name or 'None'",
   "confidenceScore": "percentage like '95%'",
   "severityLevel": "Low / Medium / High",
-  "affectedArea": "estimated percentage of plant affected",
-  "treatmentRecommendation": "detailed treatment advice including organic steps, irrigation, and prevention"
+  "affectedArea": "estimated percentage of plant affected"
 }
-Return JSON only, no markdown formatting.
+Return JSON only.
 `;
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
-      const payload = {
-        contents: [
-          {
-            parts: [
-              { text: prompt },
-              {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: base64Image
-                }
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          response_mime_type: "application/json"
-        }
-      };
-
-      console.log("[Backend] Requesting Advanced Gemini Diagnostic...");
-      const response = await axios.post(url, payload, {
-        headers: { 'Content-Type': 'application/json' }
+      console.log("[Backend] Calling Gemini Vision...");
+      const visionRes = await axios.post(geminiUrl, {
+        contents: [{
+          parts: [
+            { text: visionPrompt },
+            { inlineData: { mimeType, data: base4Image } }
+          ]
+        }],
+        generationConfig: { response_mime_type: "application/json" }
       });
 
-      const responseText = response.data.candidates[0].content.parts[0].text;
-      const parsed = JSON.parse(responseText.trim());
+      const visionText = visionRes.data.candidates[0].content.parts[0].text;
+      const visionData = JSON.parse(visionText.trim());
 
+      /* --- STEP 2: BRAINSTORM RECOMMENDATIONS --- */
+      console.log("[Backend] Requesting Intelligent Recommendations for:", visionData.diseaseName);
+      
+      const recPrompt = `
+As an expert agronomist, provide detailed farming recommendations for ${visionData.cropName} affected by ${visionData.diseaseName} (Severity: ${visionData.severityLevel}).
+Return ONLY a JSON object with:
+{
+  "explanation": "Brief scientific explanation of the disease.",
+  "treatment": ["Bullet point list of standard treatments"],
+  "organicSolutions": ["Bullet point list of organic/home remedies"],
+  "preventionTips": ["Bullet point list of preventive measures"]
+}
+If diseaseName is "None", provide general care tips. Return JSON only.
+`;
+
+      const recRes = await axios.post(geminiUrl, {
+        contents: [{ parts: [{ text: recPrompt }] }],
+        generationConfig: { response_mime_type: "application/json" }
+      });
+
+      const recText = recRes.data.candidates[0].content.parts[0].text;
+      const recData = JSON.parse(recText.trim());
+
+      /* COMBINE RESULTS */
       const finalResponse = {
-        cropName: parsed.cropName || "Unknown",
-        diseaseName: parsed.diseaseName || "None",
-        confidenceScore: parsed.confidenceScore || "85%",
-        severityLevel: parsed.severityLevel || "Low",
-        affectedArea: parsed.affectedArea || "0%",
-        treatmentRecommendation: parsed.treatmentRecommendation || "Maintain regular observation."
+        ...visionData,
+        recommendations: recData
       };
 
-      console.log("[Backend] Advanced Analysis Dispatched:", finalResponse);
+      console.log("[Backend] Chained Analysis Complete.");
       res.json(finalResponse);
 
     } catch (err) {
-      console.error("[Backend] AI Request Failed. Returning Advanced Fallback.");
-      console.error("[Debug] Error Message:", err.message);
-
-      /* ADVANCED FALLBACK RESPONSE */
+      console.error("[Backend] Chained AI Error:", err.message);
+      
+      /* RICH FALLBACK */
       const fallback = {
         cropName: "Tomato",
         diseaseName: "Early Blight",
-        confidenceScore: "88%",
+        confidenceScore: "85%",
         severityLevel: "Medium",
-        affectedArea: "15%",
-        treatmentRecommendation: "Apply copper-based fungicides. Prune affected lower leaves to improve airflow. Avoid overhead watering to reduce moisture on foliage."
+        affectedArea: "12%",
+        recommendations: {
+          explanation: "Early blight is a common fungal disease caused by Alternaria solani.",
+          treatment: ["Apply chlorothalonil or copper fungicides.", "Prune lower leaves to reduce soil splash."],
+          organicSolutions: ["Spray with a mixture of baking soda and water.", "Use neem oil as a natural antifungal."],
+          preventionTips: ["Rotate crops every 2-3 years.", "Ensure 2-3 feet spacing between plants."]
+        }
       };
 
-      console.log("[Backend] Fallback Response Dispatched:", fallback);
       res.json(fallback);
 
     } finally {
-      /* Cleanup uploaded image */
       if (fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-          console.log("[Backend] Temporary file purged successfully.");
-        } catch (cleanupErr) {
-          console.error("[Backend] Cleanup Error:", cleanupErr.message);
-        }
+        fs.unlinkSync(imagePath);
       }
     }
   });

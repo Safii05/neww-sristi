@@ -144,18 +144,18 @@ const AIDetectionSection = () => {
       
       const data = res.data;
       
-      // Map JSON fields from backend to UI state
+      // Map Chained AI Result to state
       setAnalysisResult({
         cropName: data.cropName,
         diseaseName: data.diseaseName,
         confidenceScore: data.confidenceScore,
         severityLevel: data.severityLevel,
         affectedArea: data.affectedArea,
-        treatmentRecommendation: data.treatmentRecommendation
+        recommendations: data.recommendations
       });
-      console.log("[Frontend] State updated with Advanced Result.");
+      console.log("[Frontend] State updated with Chained AI Result.");
       
-      const narration = `Analysis complete. Detected ${data.cropName} with ${data.diseaseName}. Severity is ${data.severityLevel}. Confidence is ${data.confidenceScore}.`;
+      const narration = `Analysis complete. Detected ${data.cropName} with ${data.diseaseName}. Severity is ${data.severityLevel}. We have generated a detailed treatment plan for you.`;
       speak(narration);
     } catch (err: any) {
       console.error("[Frontend] API Error:", err);
@@ -276,18 +276,65 @@ const AIDetectionSection = () => {
 
             </div>
 
-            <div style={{ padding: '1.5rem', background: '#f0fdf4', borderRadius: '1.5rem', border: '1px solid #dcfce7', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <AlertCircle className="w-4 h-4 text-emerald-600" id="treatment-icon" />
+            <div style={{ background: '#f0fdf4', border: '1px solid #dcfce7', borderRadius: '1.5rem', overflow: 'hidden' }}>
+              <div style={{ background: '#dcfce7', padding: '1rem 1.5rem', borderBottom: '1px solid #bbf7d0' }}>
                 <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.1em', color: '#065f46' }}>
                   AI Treatment Recommendation
                 </p>
               </div>
-              <div className="text-sm font-bold text-emerald-900 leading-relaxed bg-white/50 p-4 rounded-xl border border-emerald-100 flex gap-3">
-                <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                  <span className="text-[10px] text-emerald-600">✓</span>
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                
+                {analysisResult.recommendations?.explanation && (
+                  <div>
+                    <h4 className="flex items-center gap-2 text-xs font-black text-emerald-800 uppercase mb-2">
+                       Scientific Explanation
+                    </h4>
+                    <p className="text-sm font-medium text-emerald-900 opacity-80 leading-relaxed bg-white/40 p-3 rounded-xl">
+                      {analysisResult.recommendations.explanation}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="flex items-center gap-2 text-[10px] font-black text-emerald-800 uppercase mb-2">
+                      <Zap className="w-3 h-3" /> Suggested Treatment
+                    </h4>
+                    <ul className="space-y-1">
+                      {analysisResult.recommendations?.treatment?.map((item: string, i: number) => (
+                        <li key={i} className="text-xs font-semibold text-emerald-900/70 py-1 flex gap-2">
+                          <span className="text-emerald-500">•</span> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="flex items-center gap-2 text-[10px] font-black text-emerald-800 uppercase mb-2">
+                      <Sprout className="w-3 h-3" /> Organic Remedies
+                    </h4>
+                    <ul className="space-y-1">
+                      {analysisResult.recommendations?.organicSolutions?.map((item: string, i: number) => (
+                        <li key={i} className="text-xs font-semibold text-emerald-900/70 py-1 flex gap-2">
+                          <span className="text-emerald-500">•</span> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                {analysisResult.treatmentRecommendation}
+
+                <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '1rem', border: '1px dashed #bbf7d0' }}>
+                  <h4 className="flex items-center gap-2 text-[10px] font-black text-emerald-800 uppercase mb-2">
+                    <Shield className="w-3 h-3" /> Prevention Advice
+                  </h4>
+                  <ul className="grid grid-cols-1 gap-1">
+                    {analysisResult.recommendations?.preventionTips?.map((item: string, i: number) => (
+                      <li key={i} className="text-xs font-semibold text-emerald-900 opacity-70 py-1 flex gap-2">
+                        <span className="text-emerald-500">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
               </div>
             </div>
             
