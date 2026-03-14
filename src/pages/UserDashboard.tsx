@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   ScanFace, 
   CalendarCheck, 
@@ -363,10 +363,15 @@ const ModulesSection = ({ data }: any) => {
   const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  const [quizTranscript, setQuizTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
 
   const speak = (text: string) => {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onstart = () => setIsReading(true);
+    utterance.onend = () => setIsReading(false);
     window.speechSynthesis.speak(utterance);
   };
 
@@ -380,25 +385,50 @@ const ModulesSection = ({ data }: any) => {
   };
 
   useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = false;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        const last = event.results.length - 1;
+        const result = event.results[last][0].transcript.toLowerCase().trim();
+        setQuizTranscript(result);
+        
+        const optionMatch = result.match(/option\s*(1|one|2|two|3|three|4|four)/i);
+        if (optionMatch) {
+          const val = optionMatch[1];
+          const map: any = { '1': 0, 'one': 0, '2': 1, 'two': 1, '3': 2, 'three': 2, '4': 3, 'four': 3 };
+          const idx = map[val];
+          const q = data[step];
+          if (q && q.options[idx] !== undefined) {
+            speak(`Option ${idx + 1} selected.`);
+            setTimeout(() => handleAnswer(idx === q.correct), 1000);
+          }
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        if (!finished) recognitionRef.current?.start();
+      };
+
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        console.error("Auto-start recognition failed", e);
+      }
+    }
+
+    return () => recognitionRef.current?.stop();
+  }, [step, finished]);
+
+  useEffect(() => {
     if (!finished && data[step]) {
       readCurrentQuestion(data[step]);
     }
   }, [step, finished]);
-
-  useEffect(() => {
-    const handleVoiceAnswer = (e: any) => {
-      const target = e.detail;
-      if (target.startsWith('option-')) {
-        const optionIndex = parseInt(target.split('-')[1]) - 1;
-        const q = data[step];
-        if (q && q.options[optionIndex]) {
-          handleAnswer(optionIndex === q.correct);
-        }
-      }
-    };
-    window.addEventListener('voice-navigate', handleVoiceAnswer);
-    return () => window.removeEventListener('voice-navigate', handleVoiceAnswer);
-  }, [step, data]);
 
   const handleAnswer = (correct: boolean) => {
     if (correct) {
@@ -411,6 +441,7 @@ const ModulesSection = ({ data }: any) => {
     setTimeout(() => {
       if (step < data.length - 1) {
         setStep(s => s + 1);
+        setQuizTranscript('');
       } else {
         setFinished(true);
       }
@@ -421,6 +452,7 @@ const ModulesSection = ({ data }: any) => {
     setStep(0);
     setScore(0);
     setFinished(false);
+    setQuizTranscript('');
   };
 
   if (finished) {
@@ -442,11 +474,12 @@ const ModulesSection = ({ data }: any) => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <h3 className="text-xl font-bold">{t.quizTitle}</h3>
           <button 
+            disabled={isReading}
             onClick={() => readCurrentQuestion(q)}
             className="btn btn-secondary" 
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', fontSize: '0.875rem' }}
           >
-            <Volume2 size={16} /> Read Question
+            <Volume2 size={16} /> {isReading ? 'Reading question...' : 'Read Question'}
           </button>
         </div>
         <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.25rem 0.75rem', background: '#f1f5f9', borderRadius: '1rem' }}>
@@ -467,13 +500,24 @@ const ModulesSection = ({ data }: any) => {
           </button>
         ))}
       </div>
-      <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8fafc', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dcfce7', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Mic size={20} />
+      
+      <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+        <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dcfce7', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Mic size={20} className="animate-pulse" />
+          </div>
+          <div>
+            <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Voice Active</p>
+            <p className="text-xs text-slate-500">Say "Option 1-4" to answer</p>
+          </div>
         </div>
-        <p className="text-xs text-slate-500">
-          Accessibility Mode Active: You can answer by saying <strong>"Option 1"</strong>, <strong>"Option 2"</strong>, etc.
-        </p>
+        
+        <div style={{ padding: '1rem', background: quizTranscript ? '#f0f9ff' : '#f8fafc', borderRadius: '1rem', border: quizTranscript ? '1px solid #bae6fd' : '1px solid transparent' }}>
+          <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase' }}>Heard</p>
+          <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b' }}>
+            {quizTranscript ? `"${quizTranscript}"` : 'Listening...'}
+          </p>
+        </div>
       </div>
     </div>
   );
