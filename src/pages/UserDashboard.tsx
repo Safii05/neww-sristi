@@ -117,7 +117,7 @@ const AIDetectionSection = () => {
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-       alert("Please upload an image file.");
+       alert("Please upload a valid image file.");
        return;
     }
     
@@ -126,7 +126,9 @@ const AIDetectionSection = () => {
     reader.readAsDataURL(file);
 
     setLoading(true);
-    setAnalysisResult(null); // Clear previous result to trigger re-render
+    // Reset state to ensure fresh render for each upload
+    setAnalysisResult(null); 
+    
     const formData = new FormData();
     formData.append('image', file);
 
@@ -137,26 +139,26 @@ const AIDetectionSection = () => {
     };
 
     try {
-      console.log("[Frontend] Uploading image for analysis...");
+      console.log("[Frontend] Initializing AI diagnostic for uploaded file...");
       const res = await detectCrop(formData);
-      console.log("[Frontend] API Response Received:", res.data);
       
-      const result = res.data;
+      console.log("[Frontend] Diagnostic JSON Received:", res.data);
+      const data = res.data;
       
-      // Explicit mapping to analysisResult state
+      // Explicitly set the result to trigger UI update
       setAnalysisResult({
-        cropName: result.cropName,
-        healthStatus: result.healthStatus,
-        possibleDisease: result.possibleDisease,
-        confidence: result.confidence,
-        recommendation: result.recommendation
+        cropName: data.cropName,
+        healthStatus: data.healthStatus,
+        possibleDisease: data.possibleDisease,
+        confidence: data.confidence,
+        recommendation: data.recommendation
       });
       
-      const narration = `Analysis complete. Crop: ${result.cropName}. Status: ${result.healthStatus}. ${result.possibleDisease === 'None' || !result.possibleDisease ? 'No disease detected.' : `Possible disease identified: ${result.possibleDisease}.`} Confidence: ${result.confidence}. Recommendation: ${result.recommendation}`;
+      const narration = `Analysis complete. Detected Crop: ${data.cropName}. Health Status: ${data.healthStatus}. ${data.possibleDisease === 'None' || !data.possibleDisease ? 'No specific diseases detected.' : `Possible disease identified: ${data.possibleDisease}.`} Recommendation: ${data.recommendation}`;
       speak(narration);
     } catch (err) {
-      console.error("[Frontend] Analysis failed:", err);
-      const errorMsg = "AI processing failed. Please check your image and try again.";
+      console.error("[Frontend] Analysis pipeline error:", err);
+      const errorMsg = "The AI clinical analysis failed. Please check your connection and try again.";
       speak(errorMsg);
       alert(errorMsg);
     } finally {
@@ -183,7 +185,7 @@ const AIDetectionSection = () => {
             style={{ display: 'none' }}
           />
           <UploadCloud className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-          <p className="text-slate-500 mb-6 font-medium">Please upload a crop image to analyze.</p>
+          <p className="text-slate-500 mb-6 font-medium">Please upload a crop image for clinical analysis.</p>
           <button 
             className="btn btn-primary" 
             onClick={() => document.getElementById('user-file-input')?.click()}
@@ -210,7 +212,7 @@ const AIDetectionSection = () => {
           <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
              <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
              <div className="font-bold text-slate-700">Analyzing crop image using AI...</div>
-             <p className="text-sm text-slate-500 mt-2">Identifying diseases and farming actions</p>
+             <p className="text-sm text-slate-500 mt-2">Identifying diseases and clinical actions</p>
           </div>
         ) : analysisResult ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -227,7 +229,7 @@ const AIDetectionSection = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Possible Disease</span>
-                <span className={`font-bold text-right ${(!analysisResult.possibleDisease || analysisResult.possibleDisease === 'None') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <span className={`font-bold text-right ${(!analysisResult.possibleDisease || analysisResult.possibleDisease.toLowerCase() === 'none') ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {analysisResult.possibleDisease}
                 </span>
               </div>
@@ -252,7 +254,7 @@ const AIDetectionSection = () => {
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', borderStyle: 'dashed', border: '2px dashed #f1f5f9', background: '#f8fafc', color: 'var(--text-muted)', textAlign: 'center', borderRadius: '1rem' }}>
-            <p className="italic px-6">Results will appear once an image is uploaded</p>
+            <p className="italic px-6">Clinical results will appear once an image is uploaded for analysis</p>
           </div>
         )}
       </div>
