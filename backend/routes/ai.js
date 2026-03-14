@@ -12,21 +12,9 @@ module.exports = (upload) => {
 
     const imagePath = req.file.path;
 
-    // Fallback demo result function
-    const sendFallback = () => {
-      res.json({
-        crop_name: "Tomato",
-        health_status: "Healthy",
-        disease: "None",
-        confidence_level: "95%",
-        recommendation: "Plant looks robust. Continue standard fertilization and irrigation."
-      });
-    };
-
     try {
       if (!process.env.OPENAI_API_KEY) {
-        console.warn("OPENAI_API_KEY missing - using demo fallback");
-        return sendFallback();
+        throw new Error("OPENAI_API_KEY is missing in environment variables.");
       }
 
       const openai = new OpenAI({
@@ -36,14 +24,18 @@ module.exports = (upload) => {
       const imageData = fs.readFileSync(imagePath);
       const base64Image = imageData.toString('base64');
 
-      console.log("Analyzing with OpenAI Vision (Backend Only)...");
+      console.log("Starting Real-time AI Vision Analysis...");
+      
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "user",
             content: [
-              { type: "text", text: "Analyze this crop image. Identify the crop name, its health status, any visible disease, its confidence level, and a farming recommendation. Return strictly as a JSON object with keys: crop_name, health_status, disease, confidence_level, recommendation." },
+              { 
+                type: "text", 
+                text: "Analyze this agricultural crop image precisely. Identify the crop type, health status, any specific disease symptoms or pests visible, confidence level of your analysis, and a professional farming recommendation. Return the output STRICTLY in JSON format with these exact keys: cropName, healthStatus, possibleDisease, confidence, recommendation." 
+              },
               {
                 type: "image_url",
                 image_url: {
@@ -56,19 +48,29 @@ module.exports = (upload) => {
         response_format: { type: "json_object" }
       });
 
-      console.log("OpenAI Response:", response.choices[0].message.content);
-      const result = JSON.parse(response.choices[0].message.content);
+      const content = response.choices[0].message.content;
+      console.log("AI Analysis Result:", content);
+      
+      const result = JSON.parse(content);
       res.json(result);
 
     } catch (err) {
-      console.error("OpenAI API Error:", err);
-      // Log real error but send fallback to keep UI alive
-      sendFallback();
-    } finally {
-      // Cleanup
-      fs.unlink(imagePath, (err) => {
-        if (err) console.error("Failed to delete temp file:", err);
+      console.error("Critical AI Analysis Error:", err);
+      // Even in error, we provide a structured 'Error' response so the UI stays stable
+      res.status(500).json({ 
+        cropName: "Analysis Failed",
+        healthStatus: "Unknown",
+        possibleDisease: "N/A",
+        confidence: "0%",
+        recommendation: "Please ensure the image is clear and try again. Technical error: " + err.message
       });
+    } finally {
+      // Ensure file cleanup
+      if (fs.existsSync(imagePath)) {
+        fs.unlink(imagePath, (err) => {
+          if (err) console.error("Failed to delete temp file:", err);
+        });
+      }
     }
   });
 

@@ -141,12 +141,11 @@ const AIDetectionSection = () => {
       const result = res.data;
       setAiResult(result);
       
-      const narration = `Analysis complete. Crop: ${result.crop_name}. Status: ${result.health_status}. ${result.disease === 'None' ? 'No disease detected.' : `Disease identified: ${result.disease}.`} Confidence: ${result.confidence_level}. Recommendation: ${result.recommendation}`;
+      const narration = `Analysis complete. Crop: ${result.cropName}. Status: ${result.healthStatus}. ${result.possibleDisease === 'None' || !result.possibleDisease ? 'No disease detected.' : `Disease identified: ${result.possibleDisease}.`} Confidence: ${result.confidence}. Recommendation: ${result.recommendation}`;
       speak(narration);
     } catch (err) {
       console.error("AI analysis failed", err);
-      // Backend now sends fallback, so this catch is mainly for network issues
-      const errorMsg = "AI connection failed, please check your internet.";
+      const errorMsg = "AI processing failed. Please check your image and try again.";
       speak(errorMsg);
       alert(errorMsg);
     } finally {
@@ -192,7 +191,10 @@ const AIDetectionSection = () => {
       </div>
 
       <div className="card">
-        <h3 className="text-xl font-bold mb-6">{t.results}</h3>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold">{t.results}</h3>
+          {aiResult && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider border border-primary/20">AI Estimated Result</span>}
+        </div>
         {loading ? (
           <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
              <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -204,23 +206,23 @@ const AIDetectionSection = () => {
             <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Crop Name</span>
-                <span className="font-black text-slate-900">{aiResult.crop_name}</span>
+                <span className="font-black text-slate-900">{aiResult.cropName}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Health Status</span>
-                <span className={`font-bold ${aiResult.health_status?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
-                  {aiResult.health_status}
+                <span className={`font-bold ${aiResult.healthStatus?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
+                  {aiResult.healthStatus}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Possible Disease</span>
-                <span className={`font-bold text-right ${(!aiResult.disease || aiResult.disease === 'None') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {aiResult.disease || 'None'}
+                <span className={`font-bold text-right ${(!aiResult.possibleDisease || aiResult.possibleDisease === 'None') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {aiResult.possibleDisease || 'None'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Confidence Level</span>
-                <span className="font-bold text-primary">{aiResult.confidence_level}</span>
+                <span className="text-sm font-bold text-slate-500 uppercase">Confidence</span>
+                <span className="font-bold text-primary">{aiResult.confidence}</span>
               </div>
             </div>
 
