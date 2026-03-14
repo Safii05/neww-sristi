@@ -141,7 +141,7 @@ const AIDetectionSection = () => {
       const result = res.data;
       setAiResult(result);
       
-      const narration = `Analysis complete. Crop: ${result.crop}. Status: ${result.health}. ${result.disease === 'None' ? 'No disease detected.' : `Disease identified: ${result.disease}.`} Confidence: ${result.confidence}. Recommendation: ${result.recommendation}`;
+      const narration = `Analysis complete. Crop: ${result.crop_name}. Status: ${result.health_status}. ${result.disease === 'None' ? 'No disease detected.' : `Disease identified: ${result.disease}.`} Confidence: ${result.confidence_level}. Recommendation: ${result.recommendation}`;
       speak(narration);
     } catch (err) {
       console.error("AI analysis failed", err);
@@ -203,24 +203,24 @@ const AIDetectionSection = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Crop</span>
-                <span className="font-black text-slate-900">{aiResult.crop}</span>
+                <span className="text-sm font-bold text-slate-500 uppercase">Crop Name</span>
+                <span className="font-black text-slate-900">{aiResult.crop_name}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Health</span>
-                <span className={`font-bold ${aiResult.health?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
-                  {aiResult.health}
+                <span className="text-sm font-bold text-slate-500 uppercase">Health Status</span>
+                <span className={`font-bold ${aiResult.health_status?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
+                  {aiResult.health_status}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Disease</span>
+                <span className="text-sm font-bold text-slate-500 uppercase">Possible Disease</span>
                 <span className={`font-bold text-right ${(!aiResult.disease || aiResult.disease === 'None') ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {aiResult.disease || 'None'}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Confidence</span>
-                <span className="font-bold text-primary">{aiResult.confidence}</span>
+                <span className="text-sm font-bold text-slate-500 uppercase">Confidence Level</span>
+                <span className="font-bold text-primary">{aiResult.confidence_level}</span>
               </div>
             </div>
 

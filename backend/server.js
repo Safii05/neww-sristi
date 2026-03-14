@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
+const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { initDB } = require('./config/db');

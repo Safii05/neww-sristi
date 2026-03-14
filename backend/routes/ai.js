@@ -15,10 +15,10 @@ module.exports = (upload) => {
     // Fallback demo result function
     const sendFallback = () => {
       res.json({
-        crop: "Tomato",
-        health: "Healthy",
+        crop_name: "Tomato",
+        health_status: "Healthy",
         disease: "None",
-        confidence: "95%",
+        confidence_level: "95%",
         recommendation: "Plant looks robust. Continue standard fertilization and irrigation."
       });
     };
@@ -36,14 +36,14 @@ module.exports = (upload) => {
       const imageData = fs.readFileSync(imagePath);
       const base64Image = imageData.toString('base64');
 
-      console.log("Analyzing with OpenAI Vision...");
+      console.log("Analyzing with OpenAI Vision (Backend Only)...");
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Using mini for cost and speed, vision capable
+        model: "gpt-4o-mini",
         messages: [
           {
             role: "user",
             content: [
-              { type: "text", text: "Analyze this crop image. Identify the crop, its health status, any disease, a confidence level, and a farming recommendation. Return strictly as a JSON object with keys: crop, health, disease, confidence, recommendation." },
+              { type: "text", text: "Analyze this crop image. Identify the crop name, its health status, any visible disease, its confidence level, and a farming recommendation. Return strictly as a JSON object with keys: crop_name, health_status, disease, confidence_level, recommendation." },
               {
                 type: "image_url",
                 image_url: {
@@ -62,7 +62,7 @@ module.exports = (upload) => {
 
     } catch (err) {
       console.error("OpenAI API Error:", err);
-      // As requested: log real error, but send fallback result to keep UI alive
+      // Log real error but send fallback to keep UI alive
       sendFallback();
     } finally {
       // Cleanup
