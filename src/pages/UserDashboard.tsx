@@ -141,7 +141,11 @@ const AIDetectionSection = () => {
       const result = res.data;
       setAiResult(result);
       
-      const narration = `Analysis complete. Crop: ${result.crop}. Status: ${result.status}. ${result.issues === 'None' ? 'No issues detected.' : `Issues identified: ${result.issues}.`} Recommended actions: ${Array.isArray(result.recommended_actions) ? result.recommended_actions.join('. ') : result.recommended_actions}`;
+      const issuesText = Array.isArray(result.issues) 
+        ? (result.issues.length > 0 ? result.issues.join(', ') : 'None') 
+        : (result.issues || 'None');
+        
+      const narration = `Analysis complete. Crop: ${result.crop}. Status: ${result.status}. ${issuesText === 'None' ? 'No issues detected.' : `Issues identified: ${issuesText}.`} Recommended actions: ${Array.isArray(result.recommended_actions) ? result.recommended_actions.join('. ') : result.recommended_actions}`;
       speak(narration);
     } catch (err) {
       console.error("AI analysis failed", err);
@@ -213,8 +217,8 @@ const AIDetectionSection = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Issues</span>
-                <span className={`font-bold ${aiResult.issues === 'None' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {aiResult.issues}
+                <span className={`font-bold text-right ${(!aiResult.issues || (Array.isArray(aiResult.issues) && aiResult.issues.length === 0)) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {Array.isArray(aiResult.issues) ? (aiResult.issues.length > 0 ? aiResult.issues.join(', ') : 'None') : (aiResult.issues || 'None')}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>

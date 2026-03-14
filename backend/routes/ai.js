@@ -15,7 +15,7 @@ module.exports = (upload) => {
          return res.json({
            crop: "Maize",
            status: "Healthy",
-           issues: "None",
+           issues: [],
            recommended_actions: ["Maintain current irrigation schedule."],
            confidence: "94%"
          });
@@ -26,11 +26,11 @@ module.exports = (upload) => {
       const imageData = fs.readFileSync(imagePath);
       
       const parts = [
-        { text: "You are an AI agronomist. Analyze this agricultural crop image for plant health. Detect diseases, pests, or nutrient deficiencies. Return output in strict JSON format with exactly these fields: 'crop', 'status' (Healthy/Unhealthy), 'issues' (a concise string describing problems or 'None'), and 'recommended_actions' (an array of concise specific farming steps). Keep responses concise and actionable." },
+        { text: "You are an AI agronomist. Analyze the uploaded crop image for plant health. Detect visible diseases, pests, or nutrient deficiencies. Return output strictly in JSON with fields: 'crop' (name of the plant), 'status' (Healthy/Unhealthy), 'issues' (a JSON array of detected problems, e.g. ['Nitrogen deficiency', 'Aphids'], or an empty array if healthy), and 'recommended_actions' (a JSON array of specific farming steps). Do not include any text outside the JSON." },
         { inlineData: { data: imageData.toString('base64'), mimeType: req.file.mimetype } }
       ];
 
-      console.log("AI Agronomist analyzing image...");
+      console.log("AI Agronomist (Persona Strict) analyzing image...");
       const result = await model.generateContent(parts);
       const response = await result.response;
       let text = response.text();
@@ -52,7 +52,7 @@ module.exports = (upload) => {
         res.json({
           crop: "Detected Plant",
           status: "Analysis Complete",
-          issues: "Unable to parse detailed diagnostic",
+          issues: ["Unable to parse detailed diagnostic"],
           recommended_actions: [text.substring(0, 200)],
           confidence: "Manual Review Needed"
         });
