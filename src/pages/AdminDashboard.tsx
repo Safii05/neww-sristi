@@ -177,6 +177,13 @@ const AdminDashboard = ({ onLogout }: Props) => {
     }
   };
 
+  const computedStats = {
+    totalTrainees: trainees.length,
+    activeTasks: tasks.filter(t => t.status !== 'Completed').length,
+    cropsMonitored: crops.length,
+    productionYield: stats?.productionYield || 0
+  };
+
   return (
     <DashboardLayout
       menuItems={menuItems}
@@ -185,7 +192,7 @@ const AdminDashboard = ({ onLogout }: Props) => {
       onLogout={onLogout}
       userType="Admin"
     >
-      {activePage === 'dashboard' && <AdminDashboardHome stats={stats} />}
+      {activePage === 'dashboard' && <AdminDashboardHome stats={computedStats} />}
       {activePage === 'trainees' && <TraineesSection data={trainees} onAddTrainee={handleAddTrainee} onDeleteTrainee={handleDeleteTrainee} />}
       {activePage === 'farmTask' && <FarmTaskSection data={tasks} trainees={trainees} onUpdateTask={handleUpdateTaskStatus} onAddTask={handleAddTask} onDeleteTask={handleDeleteTask} />}
       {activePage === 'cropMonitoring' && <CropMonitoringSection data={crops} />}
