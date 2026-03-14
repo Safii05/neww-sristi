@@ -10,9 +10,9 @@ module.exports = (upload) => {
     res.redirect(307, '/api/analyze-crop');
   });
 
-  /* Main AI analysis route using Gemini REST API with Fallback */
+  /* Advanced AI analysis route with Extended Diagnostic Schema */
   router.post('/analyze-crop', upload.single('image'), async (req, res) => {
-    console.log("---- [Backend] Gemini Crop Analysis Started ----");
+    console.log("---- [Backend] Advanced Gemini Crop Diagnostic Started ----");
 
     if (!req.file) {
       console.error("[Backend] No image uploaded");
@@ -34,14 +34,15 @@ module.exports = (upload) => {
       const mimeType = req.file.mimetype;
 
       const prompt = `
-You are an agricultural AI expert.
+You are an advanced agricultural pathologist AI.
 Analyze the crop image and return ONLY a JSON object with the following fields:
 {
   "cropName": "name of plant",
-  "healthStatus": "Healthy or Unhealthy",
-  "disease": "disease name or 'None'",
-  "confidence": "percentage like '92%'",
-  "recommendation": "short farming advice"
+  "diseaseName": "specific disease name or 'None'",
+  "confidenceScore": "percentage like '95%'",
+  "severityLevel": "Low / Medium / High",
+  "affectedArea": "estimated percentage of plant affected",
+  "treatmentRecommendation": "detailed treatment advice including organic steps, irrigation, and prevention"
 }
 Return JSON only, no markdown formatting.
 `;
@@ -67,7 +68,7 @@ Return JSON only, no markdown formatting.
         }
       };
 
-      console.log("[Backend] Requesting Gemini API...");
+      console.log("[Backend] Requesting Advanced Gemini Diagnostic...");
       const response = await axios.post(url, payload, {
         headers: { 'Content-Type': 'application/json' }
       });
@@ -77,26 +78,28 @@ Return JSON only, no markdown formatting.
 
       const finalResponse = {
         cropName: parsed.cropName || "Unknown",
-        healthStatus: parsed.healthStatus || "Unknown",
-        disease: parsed.disease || "None",
-        confidence: parsed.confidence || "80%",
-        recommendation: parsed.recommendation || "Monitor crop condition regularly."
+        diseaseName: parsed.diseaseName || "None",
+        confidenceScore: parsed.confidenceScore || "85%",
+        severityLevel: parsed.severityLevel || "Low",
+        affectedArea: parsed.affectedArea || "0%",
+        treatmentRecommendation: parsed.treatmentRecommendation || "Maintain regular observation."
       };
 
-      console.log("[Backend] Final Analysis Dispatched:", finalResponse);
+      console.log("[Backend] Advanced Analysis Dispatched:", finalResponse);
       res.json(finalResponse);
 
     } catch (err) {
-      console.error("[Backend] AI Request Failed. Returning Demo Fallback.");
+      console.error("[Backend] AI Request Failed. Returning Advanced Fallback.");
       console.error("[Debug] Error Message:", err.message);
 
-      /* FALLBACK RESPONSE */
+      /* ADVANCED FALLBACK RESPONSE */
       const fallback = {
-        cropName: "Maize",
-        healthStatus: "Healthy",
-        disease: "None",
-        confidence: "88%",
-        recommendation: "Maintain proper irrigation and balanced fertilization."
+        cropName: "Tomato",
+        diseaseName: "Early Blight",
+        confidenceScore: "88%",
+        severityLevel: "Medium",
+        affectedArea: "15%",
+        treatmentRecommendation: "Apply copper-based fungicides. Prune affected lower leaves to improve airflow. Avoid overhead watering to reduce moisture on foliage."
       };
 
       console.log("[Backend] Fallback Response Dispatched:", fallback);

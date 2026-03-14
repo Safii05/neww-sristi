@@ -147,14 +147,15 @@ const AIDetectionSection = () => {
       // Map JSON fields from backend to UI state
       setAnalysisResult({
         cropName: data.cropName,
-        healthStatus: data.healthStatus,
-        disease: data.disease,
-        confidence: data.confidence,
-        recommendation: data.recommendation
+        diseaseName: data.diseaseName,
+        confidenceScore: data.confidenceScore,
+        severityLevel: data.severityLevel,
+        affectedArea: data.affectedArea,
+        treatmentRecommendation: data.treatmentRecommendation
       });
-      console.log("[Frontend] State updated with Analysis Result.");
+      console.log("[Frontend] State updated with Advanced Result.");
       
-      const narration = `Analysis complete. Crop: ${data.cropName}. Status: ${data.healthStatus}. Disease: ${data.disease}. Confidence: ${data.confidence}.`;
+      const narration = `Analysis complete. Detected ${data.cropName} with ${data.diseaseName}. Severity is ${data.severityLevel}. Confidence is ${data.confidenceScore}.`;
       speak(narration);
     } catch (err: any) {
       console.error("[Frontend] API Error:", err);
@@ -227,29 +228,49 @@ const AIDetectionSection = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)' }}>
               
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Crop Name</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Crop Identified</span>
                   <span className="font-bold text-slate-900 border-l-4 border-primary pl-2" id="res-crop-name">{analysisResult.cropName}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Health Status</span>
-                  <span className={`font-bold pl-2 border-l-4 ${analysisResult.healthStatus?.toLowerCase().includes('healthy') ? 'text-emerald-600 border-emerald-500' : 'text-orange-600 border-orange-500'}`} id="res-health-status">
-                    {analysisResult.healthStatus}
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Disease Detected</span>
+                  <span className={`font-bold pl-2 border-l-4 ${(analysisResult.diseaseName?.toLowerCase() === 'none' || !analysisResult.diseaseName) ? 'text-emerald-600 border-emerald-500' : 'text-rose-600 border-rose-500'}`} id="res-disease">
+                    {analysisResult.diseaseName}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Possible Disease</span>
-                  <span className={`font-bold pl-2 border-l-4 ${(analysisResult.disease?.toLowerCase() === 'none' || !analysisResult.disease) ? 'text-emerald-600 border-emerald-500' : 'text-rose-600 border-rose-500'}`} id="res-disease">
-                    {analysisResult.disease}
-                  </span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Confidence Score</span>
+                  <span className="font-bold text-slate-900 border-l-4 border-slate-900 pl-2" id="res-confidence">{analysisResult.confidenceScore}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Confidence</span>
-                  <span className="font-bold text-slate-900 border-l-4 border-slate-900 pl-2" id="res-confidence">{analysisResult.confidence}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Severity Level</span>
+                  <span className={`font-bold pl-2 border-l-4 ${
+                    analysisResult.severityLevel?.toLowerCase().includes('low') ? 'text-emerald-600 border-emerald-500' : 
+                    analysisResult.severityLevel?.toLowerCase().includes('medium') ? 'text-amber-500 border-amber-400' : 
+                    'text-rose-600 border-rose-500'
+                  }`} id="res-severity">
+                    {analysisResult.severityLevel}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Affected Area Estimate</span>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div 
+                      className={`h-full transition-all duration-1000 ${
+                        parseInt(analysisResult.affectedArea) < 15 ? 'bg-emerald-500' : 
+                        parseInt(analysisResult.affectedArea) < 40 ? 'bg-amber-500' : 'bg-rose-500'
+                      }`} 
+                      style={{ width: analysisResult.affectedArea }}
+                    ></div>
+                  </div>
+                  <span className="font-black text-slate-800 text-xs">{analysisResult.affectedArea}</span>
                 </div>
               </div>
 
@@ -257,14 +278,17 @@ const AIDetectionSection = () => {
 
             <div style={{ padding: '1.5rem', background: '#f0fdf4', borderRadius: '1.5rem', border: '1px solid #dcfce7', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <AlertCircle className="w-4 h-4 text-emerald-600" id="treatment-icon" />
                 <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.1em', color: '#065f46' }}>
-                  Farming Recommendation
+                  AI Treatment Recommendation
                 </p>
               </div>
-              <p className="text-sm font-bold text-emerald-900 leading-relaxed bg-white/50 p-4 rounded-xl border border-emerald-100">
-                {analysisResult.recommendation}
-              </p>
+              <div className="text-sm font-bold text-emerald-900 leading-relaxed bg-white/50 p-4 rounded-xl border border-emerald-100 flex gap-3">
+                <div className="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <span className="text-[10px] text-emerald-600">✓</span>
+                </div>
+                {analysisResult.treatmentRecommendation}
+              </div>
             </div>
             
             <button 
