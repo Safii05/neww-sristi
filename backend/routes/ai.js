@@ -1,5 +1,5 @@
 const express = require('express');
-const axios = require('axios');
+const OpenAI = require('openai');
 const fs = require('fs');
 const router = express.Router();
 
@@ -10,9 +10,9 @@ module.exports = (upload) => {
     res.redirect(307, '/api/analyze-crop');
   });
 
-  /* Main AI analysis route using Gemini REST API */
+  /* Main AI analysis route using OpenAI Vision API */
   router.post('/analyze-crop', upload.single('image'), async (req, res) => {
-    console.log("---- [Backend] Gemini REST API Crop Analysis Started ----");
+    console.log("---- [Backend] OpenAI Vision Crop Analysis Started ----");
 
     if (!req.file) {
       console.error("[Backend] No image uploaded");
@@ -21,92 +21,72 @@ module.exports = (upload) => {
 
     const imagePath = req.file.path;
 
-    if (!process.env.GEMINI_API_KEY) {
-      console.error("[Backend] GEMINI_API_KEY missing");
+    if (!process.env.OPENAI_API_KEY) {
+      console.error("[Backend] OPENAI_API_KEY missing");
       if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-      return res.status(400).json({ error: "GEMINI_API_KEY missing in .env file" });
+      return res.status(400).json({ error: "OPENAI_API_KEY missing in .env file" });
     }
 
     try {
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+
       /* Convert image to base64 */
       const imageBuffer = fs.readFileSync(imagePath);
       const base64Image = imageBuffer.toString("base64");
       const mimeType = req.file.mimetype;
 
-      const prompt = `
-You are an agricultural AI expert.
-Analyze the crop image and return ONLY a JSON object with the following fields:
-{
-  "cropName": "name of plant",
-  "healthStatus": "Healthy or Unhealthy",
-  "disease": "disease name or 'None'",
-  "confidence": "percentage like '92%'",
-  "recommendation": "short farming advice"
-}
-Return JSON only, no markdown formatting.
-`;
-
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
-
-      const payload = {
-        contents: [
+      console.log("[Backend] Dispatching Vision request to OpenAI (gpt-4o-mini)...");
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
           {
-            parts: [
-              { text: prompt },
+            role: "system",
+            content: "You are an expert agricultural AI. Return ONLY valid JSON."
+          },
+          {
+            role: "user",
+            content: [
               {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: base64Image
-                }
-              }
-            ]
-          }
+                type: "text",
+                text: "Analyze this crop image and return a JSON object with these fields: cropName, healthStatus (Healthy/Unhealthy), disease (name or 'None'), confidence (percentage), and recommendation (farming advice). Return JSON only."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`,
+                },
+              },
+            ],
+          },
         ],
-        generationConfig: {
-          response_mime_type: "application/json"
-        }
-      };
-
-      console.log("[Backend] Dispatching REST request to Gemini...");
-      const response = await axios.post(url, payload, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        response_format: { type: "json_object" },
       });
 
-      if (!response.data || !response.data.candidates || !response.data.candidates[0].content || !response.data.candidates[0].content.parts[0].text) {
-        throw new Error("Invalid response structure from Gemini API");
-      }
-
-      const responseText = response.data.candidates[0].content.parts[0].text;
-      console.log("[Backend] Raw Gemini REST Response:", responseText);
+      const rawContent = response.choices[0].message.content;
+      console.log("[Backend] Raw OpenAI Response:", rawContent);
 
       /* Parse JSON response */
-      let parsed;
-      try {
-        parsed = JSON.parse(responseText.trim());
-      } catch (e) {
-        console.warn("[Backend] JSON Parse failed, attempting regex extraction...");
-        const match = responseText.match(/\{[\s\S]*\}/);
-        parsed = match ? JSON.parse(match[0]) : {};
-      }
+      const parsed = JSON.parse(rawContent);
 
       const finalResponse = {
         cropName: parsed.cropName || "Unknown",
         healthStatus: parsed.healthStatus || "Unknown",
-        disease: parsed.disease || "None",
-        confidence: parsed.confidence || "80%",
-        recommendation: parsed.recommendation || "Maintain regular observation."
+        disease: parsed.disease || parsed.possibleDisease || "None",
+        confidence: parsed.confidence || "85%",
+        recommendation: parsed.recommendation || "Monitor crop condition regularly."
       };
 
       console.log("[Backend] Final Diagnostic Dispatched:", finalResponse);
       res.json(finalResponse);
 
     } catch (err) {
-      console.error("[Backend] Gemini REST Error:", err.response ? err.response.data : err.message);
+      console.error("[Backend] OpenAI Vision Error:", err.message);
       res.status(500).json({
         error: "AI analysis failed",
-        details: err.response ? err.response.data : err.message
+        details: err.message
       });
     } finally {
       /* Cleanup uploaded image */
