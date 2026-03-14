@@ -113,7 +113,7 @@ const AIDetectionSection = () => {
   const { t } = useTranslation();
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [aiResult, setAiResult] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -126,7 +126,7 @@ const AIDetectionSection = () => {
     reader.readAsDataURL(file);
 
     setLoading(true);
-    setAiResult(null);
+    setAnalysisResult(null); // Clear previous result to trigger re-render
     const formData = new FormData();
     formData.append('image', file);
 
@@ -137,12 +137,14 @@ const AIDetectionSection = () => {
     };
 
     try {
+      console.log("[Frontend] Uploading image for analysis...");
       const res = await detectCrop(formData);
-      console.log("Frontend Received AI Response:", res.data);
+      console.log("[Frontend] API Response Received:", res.data);
+      
       const result = res.data;
       
-      // Explicitly set the results to ensure state update and re-render
-      setAiResult({
+      // Explicit mapping to analysisResult state
+      setAnalysisResult({
         cropName: result.cropName,
         healthStatus: result.healthStatus,
         possibleDisease: result.possibleDisease,
@@ -150,10 +152,10 @@ const AIDetectionSection = () => {
         recommendation: result.recommendation
       });
       
-      const narration = `Analysis complete. Crop: ${result.cropName}. Status: ${result.healthStatus}. ${result.possibleDisease === 'None' || !result.possibleDisease ? 'No disease detected.' : `Disease identified: ${result.possibleDisease}.`} Confidence: ${result.confidence}. Recommendation: ${result.recommendation}`;
+      const narration = `Analysis complete. Crop: ${result.cropName}. Status: ${result.healthStatus}. ${result.possibleDisease === 'None' || !result.possibleDisease ? 'No disease detected.' : `Possible disease identified: ${result.possibleDisease}.`} Confidence: ${result.confidence}. Recommendation: ${result.recommendation}`;
       speak(narration);
     } catch (err) {
-      console.error("AI analysis failed:", err);
+      console.error("[Frontend] Analysis failed:", err);
       const errorMsg = "AI processing failed. Please check your image and try again.";
       speak(errorMsg);
       alert(errorMsg);
@@ -202,7 +204,7 @@ const AIDetectionSection = () => {
       <div className="card">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold">{t.results}</h3>
-          {aiResult && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider border border-primary/20">AI Estimated Result</span>}
+          {analysisResult && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider border border-primary/20">AI Estimated Result</span>}
         </div>
         {loading ? (
           <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
@@ -210,28 +212,28 @@ const AIDetectionSection = () => {
              <div className="font-bold text-slate-700">Analyzing crop image using AI...</div>
              <p className="text-sm text-slate-500 mt-2">Identifying diseases and farming actions</p>
           </div>
-        ) : aiResult ? (
+        ) : analysisResult ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Crop Name</span>
-                <span className="font-black text-slate-900">{aiResult.cropName}</span>
+                <span className="font-black text-slate-900">{analysisResult.cropName}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Health Status</span>
-                <span className={`font-bold ${aiResult.healthStatus?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
-                  {aiResult.healthStatus}
+                <span className={`font-bold ${analysisResult.healthStatus?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
+                  {analysisResult.healthStatus}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Possible Disease</span>
-                <span className={`font-bold text-right ${(!aiResult.possibleDisease || aiResult.possibleDisease === 'None') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {aiResult.possibleDisease || 'None'}
+                <span className={`font-bold text-right ${(!analysisResult.possibleDisease || analysisResult.possibleDisease === 'None') ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {analysisResult.possibleDisease}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span className="text-sm font-bold text-slate-500 uppercase">Confidence</span>
-                <span className="font-bold text-primary">{aiResult.confidence}</span>
+                <span className="font-bold text-primary">{analysisResult.confidence}</span>
               </div>
             </div>
 
@@ -240,11 +242,11 @@ const AIDetectionSection = () => {
                 Farming Recommendation
               </p>
               <p className="text-sm font-semibold text-emerald-800 leading-relaxed">
-                {aiResult.recommendation}
+                {analysisResult.recommendation}
               </p>
             </div>
             
-            <button className="btn btn-secondary" onClick={() => { setPreview(null); setAiResult(null); }}>
+            <button className="btn btn-secondary" onClick={() => { setPreview(null); setAnalysisResult(null); }}>
               Analyze New Image
             </button>
           </div>
