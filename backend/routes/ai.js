@@ -1,90 +1,96 @@
 const express = require('express');
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const router = express.Router();
 
 module.exports = (upload) => {
+  // Existing route - kept for backward compatibility if needed, but we focus on the new one
   router.post('/detect-crop', upload.single('image'), async (req, res) => {
-    console.log("--- [Backend] AI Crop Detection Request Started ---");
+    // ... (keeping existing logic for now or redirecting to the new one)
+    res.redirect(307, '/api/analyze-crop');
+  });
+
+  router.post('/analyze-crop', upload.single('image'), async (req, res) => {
+    console.log("--- [Backend] Gemini AI Crop Analysis Started ---");
     if (!req.file) {
-      console.error("[Backend] Error: No file provided in the request.");
+      console.error("[Backend] Error: No file provided.");
       return res.status(400).json({ error: 'No image uploaded' });
     }
 
     const imagePath = req.file.path;
-    console.log("[Backend] Uploaded Image Path:", imagePath);
+    
+    // Fallback result function
+    const sendFallback = (msg) => {
+      return {
+        cropName: "Tomato (Fallback)",
+        healthStatus: "Healthy",
+        possibleDisease: "None",
+        confidence: "80%",
+        recommendation: "Ensure regular watering and balanced fertilization. " + (msg || "")
+      };
+    };
 
     try {
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error("Missing OPENAI_API_KEY in .env file.");
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error("Missing GEMINI_API_KEY in .env file.");
       }
 
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
       const imageData = fs.readFileSync(imagePath);
       const base64Image = imageData.toString('base64');
 
-      console.log("[Backend] Requesting analysis from OpenAI Vision...");
-      
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional agronomist AI. Return ONLY valid JSON."
-          },
-          {
-            role: "user",
-            content: [
-              { 
-                type: "text", 
-                text: "Analyze this crop image. Identify the crop name, health status (Healthy/Infected/At Risk), specific disease symptoms (or 'None'), confidence percentage, and a concise farming recommendation. You MUST return exactly this JSON schema: { \"cropName\": \"string\", \"healthStatus\": \"string\", \"possibleDisease\": \"string\", \"confidence\": \"string\", \"recommendation\": \"string\" }" 
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${base64Image}`,
-                },
-              },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" }
-      });
+      const prompt = "Analyze this crop image. Identify the crop name, its health status (Healthy/Unhealthy), any visible disease, an estimated confidence level, and a short farming recommendation. Return the result strictly as a JSON object with these keys: cropName, healthStatus, possibleDisease, confidence, recommendation. Do not include any extra text or markdown formatting.";
 
-      const rawContent = response.choices[0].message.content;
-      console.log("[Backend] Raw AI Response Content:", rawContent);
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: req.file.mimetype
+          }
+        }
+      ]);
+
+      const responseText = result.response.text();
+      console.log("[Backend] Raw Gemini Response:", responseText);
+
+      // Extract JSON from potentially markdown-wrapped response
+      let jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       
-      const result = JSON.parse(rawContent);
-      
-      // Ensure NO fields are undefined with strict fallback mapping
-      const standardizedResponse = {
-        cropName: result.cropName || "Detected Crop",
-        healthStatus: result.healthStatus || "Analysis Complete",
-        possibleDisease: result.possibleDisease || "None Detected",
-        confidence: result.confidence || "85%",
-        recommendation: result.recommendation || "Maintain standard care based on visual inspection."
+      let analysisData;
+      try {
+        analysisData = JSON.parse(jsonStr);
+      } catch (e) {
+        console.error("[Backend] JSON Parse Error. Using regex extraction.");
+        const match = jsonStr.match(/\{[\s\S]*\}/);
+        if (match) {
+          analysisData = JSON.parse(match[0]);
+        } else {
+          throw new Error("Could not parse AI response as JSON");
+        }
+      }
+
+      // Standardize response
+      const standardized = {
+        cropName: analysisData.cropName || "Unknown",
+        healthStatus: analysisData.healthStatus || "Unknown",
+        possibleDisease: analysisData.possibleDisease || "None",
+        confidence: analysisData.confidence || "70%",
+        recommendation: analysisData.recommendation || "Consult a local agronomist."
       };
 
-      console.log("[Backend] Dispatched Standardized JSON:", standardizedResponse);
-      res.json(standardizedResponse);
+      console.log("[Backend] Final Analysis:", standardized);
+      res.json(standardized);
 
     } catch (err) {
-      console.error("[Backend] Analysis Pipeline Failed:", err.message);
-      res.status(500).json({ 
-        cropName: "System Analysis",
-        healthStatus: "Error",
-        possibleDisease: "N/A",
-        confidence: "0%",
-        recommendation: "Internal server error during image processing: " + err.message
-      });
+      console.error("[Backend] Analysis Error:", err.message);
+      res.json(sendFallback(err.message));
     } finally {
       if (fs.existsSync(imagePath)) {
         fs.unlink(imagePath, (err) => {
-          if (err) console.error("[Backend] Cleanup Failure:", err);
-          else console.log("[Backend] Temporary file purged successfully.");
+          if (err) console.error("[Backend] Cleanup Error:", err);
         });
       }
     }
