@@ -243,11 +243,11 @@ const AIDetectionSection = () => {
 
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Confidence Score</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Confidence</span>
                   <span className="font-bold text-slate-900 border-l-4 border-slate-900 pl-2" id="res-confidence">{analysisResult.confidenceScore}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Severity Level</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Severity</span>
                   <span className={`font-bold pl-2 border-l-4 ${
                     analysisResult.severityLevel?.toLowerCase().includes('low') ? 'text-emerald-600 border-emerald-500' : 
                     analysisResult.severityLevel?.toLowerCase().includes('medium') ? 'text-amber-500 border-amber-400' : 
@@ -259,7 +259,7 @@ const AIDetectionSection = () => {
               </div>
 
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Affected Area Estimate</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Estimated Affected Area</span>
                 <div className="flex items-center gap-3 mt-1">
                   <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                     <div 
@@ -298,7 +298,7 @@ const AIDetectionSection = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <h4 className="flex items-center gap-2 text-[10px] font-black text-emerald-800 uppercase mb-2">
-                      <Zap className="w-3 h-3" /> Suggested Treatment
+                      <Zap className="w-3 h-3" /> AI Suggested Treatment
                     </h4>
                     <ul className="space-y-1">
                       {analysisResult.recommendations?.treatment?.map((item: string, i: number) => (
@@ -310,7 +310,7 @@ const AIDetectionSection = () => {
                   </div>
                   <div>
                     <h4 className="flex items-center gap-2 text-[10px] font-black text-emerald-800 uppercase mb-2">
-                      <Sprout className="w-3 h-3" /> Organic Remedies
+                      <Sprout className="w-3 h-3" /> Organic Treatment Options
                     </h4>
                     <ul className="space-y-1">
                       {analysisResult.recommendations?.organicSolutions?.map((item: string, i: number) => (

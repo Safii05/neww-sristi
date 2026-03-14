@@ -53,7 +53,7 @@ Return JSON only.
         contents: [{
           parts: [
             { text: visionPrompt },
-            { inlineData: { mimeType, data: base4Image } }
+            { inlineData: { mimeType, data: base64Image } }
           ]
         }],
         generationConfig: { response_mime_type: "application/json" }
