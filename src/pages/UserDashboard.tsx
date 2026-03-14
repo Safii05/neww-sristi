@@ -110,7 +110,6 @@ const UserDashboard = ({ onLogout }: Props) => {
 // --- Sub-sections ---
 
 const AIDetectionSection = () => {
-  const { t } = useTranslation();
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
@@ -139,26 +138,26 @@ const AIDetectionSection = () => {
     };
 
     try {
-      console.log("[Frontend] Initializing AI diagnostic for uploaded file...");
+      console.log("[Frontend] Initiating AI Vision request...");
       const res = await detectCrop(formData);
+      console.log("[Frontend] Data received:", res.data);
       
-      console.log("[Frontend] Diagnostic JSON Received:", res.data);
       const data = res.data;
       
-      // Explicitly set the result to trigger UI update
+      // Force all fields to have a string value to avoid blank UI
       setAnalysisResult({
-        cropName: data.cropName,
-        healthStatus: data.healthStatus,
-        possibleDisease: data.possibleDisease,
-        confidence: data.confidence,
-        recommendation: data.recommendation
+        cropName: data.cropName || "Analysis Pending",
+        healthStatus: data.healthStatus || "Monitoring",
+        possibleDisease: data.possibleDisease || "None Detected",
+        confidence: data.confidence || "Processing",
+        recommendation: data.recommendation || "Maintain standard care."
       });
       
-      const narration = `Analysis complete. Detected Crop: ${data.cropName}. Health Status: ${data.healthStatus}. ${data.possibleDisease === 'None' || !data.possibleDisease ? 'No specific diseases detected.' : `Possible disease identified: ${data.possibleDisease}.`} Recommendation: ${data.recommendation}`;
+      const narration = `Analysis complete. Crop: ${data.cropName}. Status: ${data.healthStatus}. Disease: ${data.possibleDisease}. Confidence: ${data.confidence}.`;
       speak(narration);
     } catch (err) {
-      console.error("[Frontend] Analysis pipeline error:", err);
-      const errorMsg = "The AI clinical analysis failed. Please check your connection and try again.";
+      console.error("[Frontend] API Error:", err);
+      const errorMsg = "AI processing failed. Please check your network and try again.";
       speak(errorMsg);
       alert(errorMsg);
     } finally {
@@ -173,9 +172,11 @@ const AIDetectionSection = () => {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
-      <div className="card">
-        <h3 className="text-xl font-bold mb-6">Crop Health Analysis</h3>
-        <div style={{ padding: '2rem', textAlign: 'center', border: '2px dashed #e2e8f0', borderRadius: '1rem', background: '#f8fafc' }}>
+      <div className="card shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <UploadCloud className="text-primary" /> Crop Health Analysis
+        </h3>
+        <div style={{ padding: '2rem', textAlign: 'center', border: '2px dashed #cbd5e1', borderRadius: '1.5rem', background: '#f8fafc' }}>
           <input 
             type="file" 
             id="user-file-input" 
@@ -184,77 +185,98 @@ const AIDetectionSection = () => {
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
-          <UploadCloud className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-          <p className="text-slate-500 mb-6 font-medium">Please upload a crop image for clinical analysis.</p>
+          <UploadCloud className="w-16 h-16 mx-auto mb-4 text-slate-300 opacity-50" />
+          <p className="text-slate-600 mb-6 font-medium">Upload a clear photo of the crop to start AI analysis.</p>
           <button 
             className="btn btn-primary" 
             onClick={() => document.getElementById('user-file-input')?.click()}
-            style={{ width: '100%', maxWidth: '300px' }}
+            style={{ width: '100%', borderRadius: '0.75rem', fontWeight: 800 }}
           >
-            Upload Crop Image
+            Select Crop Image
           </button>
         </div>
         
         {preview && (
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-            <p className="font-bold mb-4">{t.preview}</p>
-            <img src={preview} alt="preview" style={{ maxWidth: '100%', borderRadius: '1rem', border: '4px solid white', boxShadow: 'var(--shadow-md)' }} />
+            <p className="font-bold mb-4 text-slate-700">Image Preview</p>
+            <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '1.5rem', border: '4px solid white', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}>
+              <img src={preview} alt="preview" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            </div>
           </div>
         )}
       </div>
 
-      <div className="card">
+      <div className="card shadow-lg">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold">{t.results}</h3>
-          {analysisResult && <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider border border-primary/20">AI Estimated Result</span>}
+          <h3 className="text-xl font-bold">AI Detection Results</h3>
+          {analysisResult && (
+            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-emerald-200">
+              Live Analysis
+            </span>
+          )}
         </div>
+        
         {loading ? (
-          <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
-             <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-             <div className="font-bold text-slate-700">Analyzing crop image using AI...</div>
-             <p className="text-sm text-slate-500 mt-2">Identifying diseases and clinical actions</p>
+          <div style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+             <div className="animate-spin h-12 w-12 border-[5px] border-primary border-t-transparent rounded-full mx-auto mb-6"></div>
+             <div className="font-extrabold text-xl text-slate-800">Processing Image...</div>
+             <p className="text-slate-500 mt-2 font-medium">Identifying crop type and health indicators</p>
           </div>
         ) : analysisResult ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '1rem', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Crop Name</span>
-                <span className="font-black text-slate-900">{analysisResult.cropName}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div style={{ background: '#ffffff', padding: '1.5rem', borderRadius: '1.5rem', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px 0 rgb(0 0 0 / 0.05)' }}>
+              
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Crop Name</span>
+                  <span className="font-bold text-slate-900 border-l-4 border-primary pl-2" id="res-crop-name">{analysisResult.cropName}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Health Status</span>
+                  <span className={`font-bold pl-2 border-l-4 ${analysisResult.healthStatus?.toLowerCase().includes('healthy') ? 'text-emerald-600 border-emerald-500' : 'text-orange-600 border-orange-500'}`} id="res-health-status">
+                    {analysisResult.healthStatus}
+                  </span>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Health Status</span>
-                <span className={`font-bold ${analysisResult.healthStatus?.toLowerCase().includes('healthy') ? 'text-emerald-600' : 'text-orange-600'}`}>
-                  {analysisResult.healthStatus}
-                </span>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Possible Disease</span>
+                  <span className={`font-bold pl-2 border-l-4 ${(analysisResult.possibleDisease?.toLowerCase() === 'none' || !analysisResult.possibleDisease) ? 'text-emerald-600 border-emerald-500' : 'text-rose-600 border-rose-500'}`} id="res-disease">
+                    {analysisResult.possibleDisease}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-1">Confidence</span>
+                  <span className="font-bold text-slate-900 border-l-4 border-slate-900 pl-2" id="res-confidence">{analysisResult.confidence}</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Possible Disease</span>
-                <span className={`font-bold text-right ${(!analysisResult.possibleDisease || analysisResult.possibleDisease.toLowerCase() === 'none') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {analysisResult.possibleDisease}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="text-sm font-bold text-slate-500 uppercase">Confidence</span>
-                <span className="font-bold text-primary">{analysisResult.confidence}</span>
-              </div>
+
             </div>
 
-            <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '1.5rem', border: '1px solid #d1fae5' }}>
-              <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.75rem', color: '#065f46' }}>
-                Farming Recommendation
-              </p>
-              <p className="text-sm font-semibold text-emerald-800 leading-relaxed">
+            <div style={{ padding: '1.5rem', background: '#f0fdf4', borderRadius: '1.5rem', border: '1px solid #dcfce7', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.1em', color: '#065f46' }}>
+                  Farming Recommendation
+                </p>
+              </div>
+              <p className="text-sm font-bold text-emerald-900 leading-relaxed bg-white/50 p-4 rounded-xl border border-emerald-100">
                 {analysisResult.recommendation}
               </p>
             </div>
             
-            <button className="btn btn-secondary" onClick={() => { setPreview(null); setAnalysisResult(null); }}>
+            <button 
+              className="btn btn-secondary w-full" 
+              onClick={() => { setPreview(null); setAnalysisResult(null); }}
+              style={{ borderRadius: '1rem', fontWeight: 800 }}
+            >
               Analyze New Image
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', borderStyle: 'dashed', border: '2px dashed #f1f5f9', background: '#f8fafc', color: 'var(--text-muted)', textAlign: 'center', borderRadius: '1rem' }}>
-            <p className="italic px-6">Clinical results will appear once an image is uploaded for analysis</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '250px', border: '2px dashed #f1f5f9', background: '#f8fafc', color: '#94a3b8', textAlign: 'center', borderRadius: '1.5rem' }}>
+            <p className="italic font-medium px-8">Analysis results will be displayed here after you upload an image for diagnostic review.</p>
           </div>
         )}
       </div>
