@@ -10,7 +10,14 @@ import {
   LogOut,
   Camera,
   Volume2,
-  Mic
+  Mic,
+  Users,
+  Search,
+  Star,
+  Award,
+  Zap,
+  Sprout,
+  Shield
 } from 'lucide-react';
 import { 
   Chart as ChartJS, 
@@ -84,6 +91,7 @@ const UserDashboard = ({ onLogout }: Props) => {
 
   const menuItems = [
     { id: 'aiDetection', label: t.aiDetection, icon: ScanFace },
+    { id: 'traineeShowcase', label: 'Trainee Showcase', icon: Users },
     { id: 'attendance', label: t.attendance, icon: CalendarCheck },
     { id: 'modules', label: t.modules, icon: BookOpen },
     { id: 'settings', label: t.settings, icon: SettingsIcon },
@@ -100,6 +108,7 @@ const UserDashboard = ({ onLogout }: Props) => {
       userType="User"
     >
       {activePage === 'aiDetection' && <AIDetectionSection />}
+      {activePage === 'traineeShowcase' && <TraineeShowcaseSection />}
       {activePage === 'attendance' && <AttendanceSection data={attendance.length > 0 ? attendance : mockAttendanceData} rate={attRate || 90} />}
       {activePage === 'modules' && <ModulesSection data={quiz.length > 0 ? quiz : mockQuizQuestions} />}
       {activePage === 'settings' && <SettingsSection />}
@@ -764,6 +773,108 @@ const SettingsSection = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const TraineeShowcaseSection = () => {
+  const [filter, setFilter] = useState('');
+  
+  const mockTrainees = [
+    { id: 1, name: "Arun Kumar", area: "Organic Farming", skills: "Seed Sowing, Compost Prep", progress: 92, rating: 9 },
+    { id: 2, name: "Priya S.", area: "Crop Monitoring", skills: "Pest ID, Drone Analysis", progress: 88, rating: 8 },
+    { id: 3, name: "Karthik R.", area: "Irrigation Handling", skills: "Drip System Repair, Smart Valves", progress: 95, rating: 10 },
+    { id: 4, name: "Lakshmi M.", area: "Organic Farming", skills: "Natural Fertilizer Prep", progress: 79, rating: 7 },
+    { id: 5, name: "Rahul Dev", area: "Crop Monitoring", skills: "Yield Prediction, Soil PH", progress: 91, rating: 9 },
+  ];
+
+  const filtered = filter 
+    ? mockTrainees.filter(t => t.area === filter || t.skills.includes(filter))
+    : mockTrainees;
+
+  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();
+
+  return (
+    <div className="fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Trainee Showcase</h2>
+          <p className="text-slate-500 font-medium">Discover top-skilling graduates from Srishti Foundation's programs.</p>
+        </div>
+        
+        <div className="card shadow-sm p-4 w-full md:w-auto bg-white/50 backdrop-blur-md border-slate-200 flex flex-col gap-2">
+          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+            <Search size={10} /> Skill Requirement Filter
+          </label>
+          <select 
+            className="input text-xs font-bold py-2 px-4 bg-white" 
+            style={{ borderRadius: '0.75rem', minWidth: '200px' }}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          >
+            <option value="">All Specializations</option>
+            <option value="Organic Farming">Organic Farming</option>
+            <option value="Irrigation Handling">Irrigation Handling</option>
+            <option value="Crop Monitoring">Crop Monitoring</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filtered.map((trainee) => (
+          <div key={trainee.id} className="card shadow-sm hover:shadow-xl transition-all duration-300 border-l-4 border-emerald-500 group overflow-hidden">
+            <div className="relative p-6">
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex gap-4 items-center">
+                  <div className="avatar" style={{ width: '56px', height: '56px', background: '#f0fdf4', color: '#10b981', fontSize: '1.5rem', fontWeight: 900, border: '2px solid #dcfce7' }}>
+                    {getInitials(trainee.name)}
+                  </div>
+                  <div>
+                    <h4 className="font-black text-slate-900 text-lg leading-tight group-hover:text-emerald-600 transition-colors uppercase">{trainee.name}</h4>
+                    <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full uppercase">{trainee.area}</span>
+                  </div>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 px-2 py-1 rounded-lg flex items-center gap-1">
+                  <Star size={12} className="fill-amber-400 text-amber-400" />
+                  <span className="text-xs font-black text-amber-700">{trainee.rating}/10</span>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Training Mastery</span>
+                  <span className="text-xs font-black text-emerald-600">{trainee.progress}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-50">
+                  <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{ width: `${trainee.progress}%` }}></div>
+                </div>
+              </div>
+
+              <div className="mb-8">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-2 block">Skills Learned</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {trainee.skills.split(',').map((skill, idx) => (
+                    <span key={idx} className="bg-white text-emerald-700 text-[9px] font-black px-2 py-1 rounded-md border border-emerald-100 uppercase shadow-sm">
+                      {skill.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <button className="btn btn-outline w-full text-[10px] font-black uppercase tracking-widest py-3 border-2 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700">
+                Contact For Placement
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <div className="card bg-slate-50 border-2 border-dashed border-slate-200 py-20 text-center">
+          <Award className="mx-auto mb-4 text-slate-300" size={48} />
+          <p className="font-black text-slate-400 uppercase tracking-widest">No trainees found with this specialization.</p>
+        </div>
+      )}
     </div>
   );
 };
