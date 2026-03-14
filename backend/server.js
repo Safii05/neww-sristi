@@ -8,6 +8,11 @@ const { initDB } = require('./config/db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Ensure uploads directory exists
+if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
+  fs.mkdirSync(path.join(__dirname, 'uploads'));
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());

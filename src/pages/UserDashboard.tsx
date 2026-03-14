@@ -145,7 +145,9 @@ const AIDetectionSection = () => {
       speak(narration);
     } catch (err) {
       console.error("AI analysis failed", err);
-      speak("AI analysis failed. Please check your connection and try again.");
+      const errorMsg = "AI analysis failed, please try again.";
+      speak(errorMsg);
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -193,7 +195,7 @@ const AIDetectionSection = () => {
         {loading ? (
           <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
              <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-             <div className="font-bold text-slate-700">Analyzing crop image...</div>
+             <div className="font-bold text-slate-700">Analyzing crop image using AI...</div>
              <p className="text-sm text-slate-500 mt-2">Identifying diseases and farming actions</p>
           </div>
         ) : aiResult ? (
