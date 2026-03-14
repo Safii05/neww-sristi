@@ -114,7 +114,6 @@ const AIDetectionSection = () => {
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
-  const [isDragging, setIsDragging] = useState(false);
 
   const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -157,39 +156,11 @@ const AIDetectionSection = () => {
     if (file) processFile(file);
   };
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setIsDragging(true);
-    else if (e.type === "dragleave") setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
-    }
-  };
-
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
       <div className="card">
         <h3 className="text-xl font-bold mb-6">Crop Health Analysis</h3>
-        <div 
-          className={`upload-zone ${isDragging ? 'dragging' : ''}`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => document.getElementById('user-file-input')?.click()}
-          style={{ 
-            border: isDragging ? '2px dashed var(--primary)' : '2px dashed #e2e8f0',
-            background: isDragging ? '#f0fdf4' : 'white',
-            transition: 'all 0.3s ease'
-          }}
-        >
+        <div style={{ padding: '2rem', textAlign: 'center', border: '2px dashed #e2e8f0', borderRadius: '1rem', background: '#f8fafc' }}>
           <input 
             type="file" 
             id="user-file-input" 
@@ -198,9 +169,17 @@ const AIDetectionSection = () => {
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
-          <UploadCloud className={`w-16 h-16 mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-slate-300'}`} />
-          <p className="text-slate-500 font-medium">{isDragging ? "Drop your image here" : t.uploadBox}</p>
+          <UploadCloud className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+          <p className="text-slate-500 mb-6 font-medium">Please upload a crop image to analyze.</p>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => document.getElementById('user-file-input')?.click()}
+            style={{ width: '100%', maxWidth: '300px' }}
+          >
+            Upload Crop Image
+          </button>
         </div>
+        
         {preview && (
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
             <p className="font-bold mb-4">{t.preview}</p>
@@ -214,8 +193,8 @@ const AIDetectionSection = () => {
         {loading ? (
           <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
              <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-             <div className="font-bold text-slate-700">Analyzing with Gemini AI...</div>
-             <p className="text-sm text-slate-500 mt-2">Identifying crop diseases and treatment plans</p>
+             <div className="font-bold text-slate-700">Analyzing crop image...</div>
+             <p className="text-sm text-slate-500 mt-2">Identifying diseases and farming actions</p>
           </div>
         ) : aiResult ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -257,7 +236,7 @@ const AIDetectionSection = () => {
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', borderStyle: 'dashed', border: '2px dashed #f1f5f9', background: '#f8fafc', color: 'var(--text-muted)', textAlign: 'center', borderRadius: '1rem' }}>
-            <p className="italic px-6">{t.placeholderResults}</p>
+            <p className="italic px-6">Results will appear once an image is uploaded</p>
           </div>
         )}
       </div>
