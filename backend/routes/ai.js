@@ -1,89 +1,122 @@
 const express = require('express');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const axios = require('axios');
 const fs = require('fs');
 const router = express.Router();
 
 module.exports = (upload) => {
-  // Existing route - kept for backward compatibility if needed, but we focus on the new one
+
+  /* Redirect old route */
   router.post('/detect-crop', upload.single('image'), async (req, res) => {
-    // ... (keeping existing logic for now or redirecting to the new one)
     res.redirect(307, '/api/analyze-crop');
   });
 
+  /* Main AI analysis route using Gemini REST API */
   router.post('/analyze-crop', upload.single('image'), async (req, res) => {
-    console.log("--- [Backend] Gemini AI Crop Analysis Started ---");
+    console.log("---- [Backend] Gemini REST API Crop Analysis Started ----");
+
     if (!req.file) {
-      console.error("[Backend] Error: No file provided.");
-      return res.status(400).json({ error: 'No image uploaded' });
+      console.error("[Backend] No image uploaded");
+      return res.status(400).json({ error: "No image uploaded" });
     }
 
     const imagePath = req.file.path;
 
     if (!process.env.GEMINI_API_KEY) {
-      console.error("[Backend] GEMINI_API_KEY is missing.");
-      return res.status(400).json({ error: "Missing GEMINI_API_KEY in .env file." });
+      console.error("[Backend] GEMINI_API_KEY missing");
+      if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+      return res.status(400).json({ error: "GEMINI_API_KEY missing in .env file" });
     }
 
     try {
-      console.log("[Backend] GEMINI_API_KEY check: Present (Verified)");
+      /* Convert image to base64 */
+      const imageBuffer = fs.readFileSync(imagePath);
+      const base64Image = imageBuffer.toString("base64");
+      const mimeType = req.file.mimetype;
 
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `
+You are an agricultural AI expert.
+Analyze the crop image and return ONLY a JSON object with the following fields:
+{
+  "cropName": "name of plant",
+  "healthStatus": "Healthy or Unhealthy",
+  "disease": "disease name or 'None'",
+  "confidence": "percentage like '92%'",
+  "recommendation": "short farming advice"
+}
+Return JSON only, no markdown formatting.
+`;
 
-      const imageData = fs.readFileSync(imagePath);
-      const base64Image = imageData.toString('base64');
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
-      const prompt = "Analyze this crop image. Identify the crop name, its health status (Healthy/Unhealthy), any visible disease, an estimated confidence level, and a short farming recommendation. Return the result strictly as a JSON object with these keys: cropName, healthStatus, disease, confidence, recommendation. Do not include any extra text or markdown formatting.";
-
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: req.file.mimetype
+      const payload = {
+        contents: [
+          {
+            parts: [
+              { text: prompt },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64Image
+                }
+              }
+            ]
           }
+        ],
+        generationConfig: {
+          response_mime_type: "application/json"
         }
-      ]);
-
-      const responseText = result.response.text();
-      console.log("[Backend] Raw Gemini Response:", responseText);
-
-      // Extract JSON from potentially markdown-wrapped response
-      let jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      
-      let analysisData;
-      try {
-        analysisData = JSON.parse(jsonStr);
-      } catch (e) {
-        console.error("[Backend] JSON Parse Error. Using regex extraction.");
-        const match = jsonStr.match(/\{[\s\S]*\}/);
-        if (match) {
-          analysisData = JSON.parse(match[0]);
-        } else {
-          throw new Error("Could not parse AI response as JSON");
-        }
-      }
-
-      // Standardize response
-      const standardized = {
-        cropName: analysisData.cropName || "Unknown",
-        healthStatus: analysisData.healthStatus || "Unknown",
-        disease: analysisData.disease || analysisData.possibleDisease || "None",
-        confidence: analysisData.confidence || "70%",
-        recommendation: analysisData.recommendation || "Consult a local agronomist."
       };
 
-      console.log("[Backend] Final Analysis:", standardized);
-      res.json(standardized);
+      console.log("[Backend] Dispatching REST request to Gemini...");
+      const response = await axios.post(url, payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.data || !response.data.candidates || !response.data.candidates[0].content || !response.data.candidates[0].content.parts[0].text) {
+        throw new Error("Invalid response structure from Gemini API");
+      }
+
+      const responseText = response.data.candidates[0].content.parts[0].text;
+      console.log("[Backend] Raw Gemini REST Response:", responseText);
+
+      /* Parse JSON response */
+      let parsed;
+      try {
+        parsed = JSON.parse(responseText.trim());
+      } catch (e) {
+        console.warn("[Backend] JSON Parse failed, attempting regex extraction...");
+        const match = responseText.match(/\{[\s\S]*\}/);
+        parsed = match ? JSON.parse(match[0]) : {};
+      }
+
+      const finalResponse = {
+        cropName: parsed.cropName || "Unknown",
+        healthStatus: parsed.healthStatus || "Unknown",
+        disease: parsed.disease || "None",
+        confidence: parsed.confidence || "80%",
+        recommendation: parsed.recommendation || "Maintain regular observation."
+      };
+
+      console.log("[Backend] Final Diagnostic Dispatched:", finalResponse);
+      res.json(finalResponse);
 
     } catch (err) {
-      console.error("[Backend] Analysis Error:", err.message);
-      res.status(500).json({ error: "AI analysis failed: " + err.message });
+      console.error("[Backend] Gemini REST Error:", err.response ? err.response.data : err.message);
+      res.status(500).json({
+        error: "AI analysis failed",
+        details: err.response ? err.response.data : err.message
+      });
     } finally {
+      /* Cleanup uploaded image */
       if (fs.existsSync(imagePath)) {
-        fs.unlink(imagePath, (err) => {
-          if (err) console.error("[Backend] Cleanup Error:", err);
-        });
+        try {
+          fs.unlinkSync(imagePath);
+          console.log("[Backend] Temporary file purged.");
+        } catch (cleanupErr) {
+          console.error("[Backend] Cleanup Error:", cleanupErr.message);
+        }
       }
     }
   });
