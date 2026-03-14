@@ -54,10 +54,13 @@ const AppContent = () => {
   }
 };
 
+import VoiceAssistant from './components/VoiceAssistant';
+
 function App() {
   return (
     <TranslationProvider>
       <AppContent />
+      <VoiceAssistant />
     </TranslationProvider>
   );
 }

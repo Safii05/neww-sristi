@@ -68,6 +68,16 @@ const UserDashboard = ({ onLogout }: Props) => {
       }
     };
     fetchData();
+
+    const handleVoiceNav = (e: any) => {
+      const target = e.detail;
+      const validPages = ['aiDetection', 'attendance', 'modules', 'settings'];
+      if (validPages.includes(target)) {
+        setActivePage(target);
+      }
+    };
+    window.addEventListener('voice-navigate', handleVoiceNav);
+    return () => window.removeEventListener('voice-navigate', handleVoiceNav);
   }, []);
 
   const menuItems = [

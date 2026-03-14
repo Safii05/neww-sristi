@@ -130,6 +130,20 @@ const AdminDashboard = ({ onLogout }: Props) => {
     };
     fetchData();
     fetchAnalytics();
+
+    const handleVoiceNav = (e: any) => {
+      const target = e.detail;
+      if (target === 'attendance') {
+        setActivePage('attendanceProduction');
+      } else {
+        const validPages = ['dashboard', 'trainees', 'farmTask', 'cropMonitoring', 'attendanceProduction', 'inventory', 'reports', 'settings'];
+        if (validPages.includes(target)) {
+          setActivePage(target);
+        }
+      }
+    };
+    window.addEventListener('voice-navigate', handleVoiceNav);
+    return () => window.removeEventListener('voice-navigate', handleVoiceNav);
   }, []);
 
   const menuItems = [
