@@ -26,16 +26,16 @@ module.exports = (upload) => {
       const imageData = fs.readFileSync(imagePath);
       
       const parts = [
-        { text: "You are an AI agronomist. Analyze the uploaded crop image for plant health. Detect visible diseases, pests, or nutrient deficiencies. Return output strictly in JSON with fields: 'crop' (name of the plant), 'status' (Healthy/Unhealthy), 'issues' (a JSON array of detected problems, e.g. ['Nitrogen deficiency', 'Aphids'], or an empty array if healthy), and 'recommended_actions' (a JSON array of specific farming steps). Do not include any text outside the JSON." },
+        { text: "You are an AI crop health assistant. Inspect the uploaded crop image carefully. Identify any plant diseases, pest damage, or nutrient deficiencies. Return the result strictly as JSON with this schema: {\"crop\": \"name of the plant\", \"status\": \"Healthy or Unhealthy\", \"issues\": [\"list of problems\"], \"recommended_actions\": [\"list of farming steps\"]}. Do not include any text, explanations, or formatting outside the JSON." },
         { inlineData: { data: imageData.toString('base64'), mimeType: req.file.mimetype } }
       ];
 
-      console.log("AI Agronomist (Persona Strict) analyzing image...");
+      console.log("AI Crop Health Assistant (Strict Schema) analyzing image...");
       const result = await model.generateContent(parts);
       const response = await result.response;
       let text = response.text();
       
-      console.log("Agronomist Analysis:", text);
+      console.log("Analysis Result:", text);
 
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -48,7 +48,7 @@ module.exports = (upload) => {
         if (!jsonResult.confidence) jsonResult.confidence = "High Precision";
         res.json(jsonResult);
       } catch (parseErr) {
-        console.error("Agronomist parsing failed:", text);
+        console.error("Analysis parsing failed:", text);
         res.json({
           crop: "Detected Plant",
           status: "Analysis Complete",
