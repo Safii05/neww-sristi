@@ -138,13 +138,22 @@ const AIDetectionSection = () => {
 
     try {
       const res = await detectCrop(formData);
+      console.log("Frontend Received AI Response:", res.data);
       const result = res.data;
-      setAiResult(result);
+      
+      // Explicitly set the results to ensure state update and re-render
+      setAiResult({
+        cropName: result.cropName,
+        healthStatus: result.healthStatus,
+        possibleDisease: result.possibleDisease,
+        confidence: result.confidence,
+        recommendation: result.recommendation
+      });
       
       const narration = `Analysis complete. Crop: ${result.cropName}. Status: ${result.healthStatus}. ${result.possibleDisease === 'None' || !result.possibleDisease ? 'No disease detected.' : `Disease identified: ${result.possibleDisease}.`} Confidence: ${result.confidence}. Recommendation: ${result.recommendation}`;
       speak(narration);
     } catch (err) {
-      console.error("AI analysis failed", err);
+      console.error("AI analysis failed:", err);
       const errorMsg = "AI processing failed. Please check your image and try again.";
       speak(errorMsg);
       alert(errorMsg);

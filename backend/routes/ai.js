@@ -24,17 +24,21 @@ module.exports = (upload) => {
       const imageData = fs.readFileSync(imagePath);
       const base64Image = imageData.toString('base64');
 
-      console.log("Starting Real-time AI Vision Analysis...");
+      console.log("Starting Precise AI Analysis...");
       
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
+            role: "system",
+            content: "You are a professional agronomist. Identify crop, health, disease, confidence, and recommendation based on images. You MUST return valid JSON ONLY."
+          },
+          {
             role: "user",
             content: [
               { 
                 type: "text", 
-                text: "Analyze this agricultural crop image precisely. Identify the crop type, health status, any specific disease symptoms or pests visible, confidence level of your analysis, and a professional farming recommendation. Return the output STRICTLY in JSON format with these exact keys: cropName, healthStatus, possibleDisease, confidence, recommendation." 
+                text: "Analyze this agricultural crop image. Return the output STRICTLY in JSON format with these exact keys and no others: cropName, healthStatus, possibleDisease, confidence, recommendation." 
               },
               {
                 type: "image_url",
@@ -49,23 +53,31 @@ module.exports = (upload) => {
       });
 
       const content = response.choices[0].message.content;
-      console.log("AI Analysis Result:", content);
+      console.log("Backend Received API Response:", content);
       
       const result = JSON.parse(content);
-      res.json(result);
+      
+      // Strict key filtering to ensure frontend compatibility
+      const sanitizedResult = {
+        cropName: result.cropName || "Unknown",
+        healthStatus: result.healthStatus || "Unknown",
+        possibleDisease: result.possibleDisease || "None",
+        confidence: result.confidence || "0%",
+        recommendation: result.recommendation || "No recommendation available."
+      };
+
+      res.json(sanitizedResult);
 
     } catch (err) {
       console.error("Critical AI Analysis Error:", err);
-      // Even in error, we provide a structured 'Error' response so the UI stays stable
       res.status(500).json({ 
-        cropName: "Analysis Failed",
-        healthStatus: "Unknown",
+        cropName: "Error",
+        healthStatus: "N/A",
         possibleDisease: "N/A",
         confidence: "0%",
-        recommendation: "Please ensure the image is clear and try again. Technical error: " + err.message
+        recommendation: "System error: " + err.message
       });
     } finally {
-      // Ensure file cleanup
       if (fs.existsSync(imagePath)) {
         fs.unlink(imagePath, (err) => {
           if (err) console.error("Failed to delete temp file:", err);
